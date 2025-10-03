@@ -76,10 +76,11 @@ main() {
     exit 1
   fi
 
-  local ref="${BUILDKITE_BRANCH}"
-  ref=$(resolve_ref "$ref" "$repo" "$GITHUB_TOKEN")
-
-  export BUILDKITE_COMMIT="$ref"
+  if [[ -z "${BUILDKITE_COMMIT:-}" ]]; then
+    local ref
+    ref=$(resolve_ref "$BUILDKITE_BRANCH" "$repo" "$GITHUB_TOKEN")
+    export BUILDKITE_COMMIT="$ref"
+  fi
 
   local patterns
   patterns=$(plugin_read_list FILE)
@@ -88,7 +89,7 @@ main() {
     [[ -z "$pattern" ]] && continue
 
     local files
-    files=$(expand_pattern "$pattern" "$repo" "$ref" "$GITHUB_TOKEN")
+    files=$(expand_pattern "$pattern" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN")
 
     while IFS= read -r file; do
       [[ -z "$file" ]] && continue
@@ -97,7 +98,7 @@ main() {
       dir=$(dirname "$file")
       [[ "$dir" != "." && ! -d "$dir" ]] && mkdir -p "$dir" 2>/dev/null || true
 
-      download_file "$file" "$repo" "$ref" "$GITHUB_TOKEN"
+      download_file "$file" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN"
     done <<< "$files"
   done <<< "$patterns"
 }

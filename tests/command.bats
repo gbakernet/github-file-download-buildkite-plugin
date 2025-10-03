@@ -115,3 +115,19 @@ load "${BATS_PLUGIN_PATH}/load.bash"
   assert_output --partial "resolved123"
   unstub curl
 }
+
+@test "Skips resolving commit when BUILDKITE_COMMIT already set" {
+  export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE="file.txt"
+  export BUILDKITE_REPO="https://github.com/owner/repo.git"
+  export BUILDKITE_COMMIT="existing123"
+  export BUILDKITE_BRANCH="main"
+  export GITHUB_TOKEN="token"
+
+  stub curl \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/file.txt?ref=existing123 -o file.txt : echo 'downloaded'"
+
+  run "$PWD/hooks/checkout"
+
+  assert_success
+  unstub curl
+}
