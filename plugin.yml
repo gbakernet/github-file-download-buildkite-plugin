@@ -1,0 +1,11 @@
+name: GitHub File Download
+description: Downloads files from GitHub repositories
+author: https://github.com/envato
+requirements:
+  - bash
+configuration:
+  properties:
+    file:
+      type: string
+  required:
+    - file
