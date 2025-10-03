@@ -1,0 +1,105 @@
+#!/bin/bash
+
+set -euo pipefail
+
+basedir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
+
+# shellcheck source=/dev/null
+. "$basedir/lib/shared.bash"
+
+extract_repo_info() {
+  local repo_url="$BUILDKITE_REPO"
+  echo "$repo_url" | sed -E 's#.*github\.com[/:]([^/]+)/([^/.]+)(\.git)?$#\1/\2#'
+}
+
+resolve_ref() {
+  local ref="$1"
+  local repo="$2"
+  local token="$3"
+
+  curl -sSfL \
+    -H "Authorization: Bearer $token" \
+    -H "Accept: application/vnd.github.v3+json" \
+    "https://api.github.com/repos/$repo/commits/$ref" | jq -r '.sha'
+}
+
+list_files() {
+  local path="$1"
+  local repo="$2"
+  local ref="$3"
+  local token="$4"
+
+  curl -sSfL \
+    -H "Authorization: Bearer $token" \
+    -H "Accept: application/vnd.github.v3+json" \
+    "https://api.github.com/repos/$repo/contents/$path?ref=$ref"
+}
+
+download_file() {
+  local file="$1"
+  local repo="$2"
+  local ref="$3"
+  local token="$4"
+
+  curl -sSfL \
+    -H "Authorization: Bearer $token" \
+    -H "Accept: application/vnd.github.v3.raw" \
+    "https://api.github.com/repos/$repo/contents/$file?ref=$ref" \
+    -o "$file"
+}
+
+expand_pattern() {
+  local pattern="$1"
+  local repo="$2"
+  local ref="$3"
+  local token="$4"
+
+  if [[ "$pattern" != *"/*" ]]; then
+    echo "$pattern"
+    return
+  fi
+
+  local dir="${pattern%/*}"
+
+  local response
+  response=$(list_files "$dir" "$repo" "$ref" "$token")
+
+  echo "$response" | jq -r '.[].path'
+}
+
+main() {
+  local repo
+  repo=$(extract_repo_info)
+
+  if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+    echo "Error: GITHUB_TOKEN is required"
+    exit 1
+  fi
+
+  local ref="${BUILDKITE_BRANCH}"
+  ref=$(resolve_ref "$ref" "$repo" "$GITHUB_TOKEN")
+
+  export BUILDKITE_COMMIT="$ref"
+
+  local patterns
+  patterns=$(plugin_read_list FILE)
+
+  while IFS= read -r pattern; do
+    [[ -z "$pattern" ]] && continue
+
+    local files
+    files=$(expand_pattern "$pattern" "$repo" "$ref" "$GITHUB_TOKEN")
+
+    while IFS= read -r file; do
+      [[ -z "$file" ]] && continue
+
+      local dir
+      dir=$(dirname "$file")
+      [[ "$dir" != "." && ! -d "$dir" ]] && mkdir -p "$dir" 2>/dev/null || true
+
+      download_file "$file" "$repo" "$ref" "$GITHUB_TOKEN"
+    done <<< "$files"
+  done <<< "$patterns"
+}
+
+main

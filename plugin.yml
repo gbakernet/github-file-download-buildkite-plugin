@@ -3,9 +3,11 @@ description: Downloads files from GitHub repositories
 author: https://github.com/envato
 requirements:
   - bash
+  - jq
 configuration:
   properties:
     file:
-      type: string
+      type: [string, array]
+      minimum: 1
   required:
     - file
