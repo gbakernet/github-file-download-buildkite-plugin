@@ -168,3 +168,59 @@ load "${BATS_PLUGIN_PATH}/load.bash"
   assert_output --partial "Retrying"
   unstub curl
 }
+
+@test "Fails when ref does not exist" {
+  export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE="file.txt"
+  export BUILDKITE_REPO="https://github.com/owner/repo.git"
+  export BUILDKITE_BRANCH="nonexistent"
+  export GITHUB_TOKEN="token"
+
+  stub curl \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/nonexistent : exit 22" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/nonexistent : exit 22" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/nonexistent : exit 22"
+
+  run "$PWD/hooks/checkout"
+
+  assert_failure
+  assert_output --partial "Failed to resolve ref 'nonexistent'"
+  unstub curl
+}
+
+@test "Fails when file does not exist" {
+  export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE="missing.txt"
+  export BUILDKITE_REPO="https://github.com/owner/repo.git"
+  export BUILDKITE_BRANCH="main"
+  export GITHUB_TOKEN="token"
+
+  stub curl \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 -o missing.txt : exit 22" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 -o missing.txt : exit 22" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 -o missing.txt : exit 22"
+
+  run "$PWD/hooks/checkout"
+
+  assert_failure
+  assert_output --partial "Failed to download file 'missing.txt'"
+  unstub curl
+}
+
+@test "Fails when directory does not exist" {
+  export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE=".nonexistent/*"
+  export BUILDKITE_REPO="https://github.com/owner/repo.git"
+  export BUILDKITE_BRANCH="main"
+  export GITHUB_TOKEN="token"
+
+  stub curl \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.nonexistent?ref=abc123 : exit 22" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.nonexistent?ref=abc123 : exit 22" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.nonexistent?ref=abc123 : exit 22"
+
+  run "$PWD/hooks/checkout"
+
+  assert_failure
+  assert_output --partial "Failed to list files for pattern '.nonexistent/*'"
+  unstub curl
+}

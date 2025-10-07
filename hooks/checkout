@@ -83,7 +83,9 @@ expand_pattern() {
   local dir="${pattern%/*}"
 
   local response
-  response=$(list_files "$dir" "$repo" "$ref" "$token")
+  if ! response=$(list_files "$dir" "$repo" "$ref" "$token"); then
+    return 1
+  fi
 
   echo "$response" | jq -r '.[] | select(.type == "file") | .path'
 }
@@ -99,7 +101,10 @@ main() {
 
   if [[ -z "${BUILDKITE_COMMIT:-}" ]]; then
     local ref
-    ref=$(resolve_ref "$BUILDKITE_BRANCH" "$repo" "$GITHUB_TOKEN")
+    if ! ref=$(resolve_ref "$BUILDKITE_BRANCH" "$repo" "$GITHUB_TOKEN"); then
+      echo "Error: Failed to resolve ref '$BUILDKITE_BRANCH' for repo '$repo'" >&2
+      exit 1
+    fi
     export BUILDKITE_COMMIT="$ref"
   fi
 
@@ -110,7 +115,10 @@ main() {
     [[ -z "$pattern" ]] && continue
 
     local files
-    files=$(expand_pattern "$pattern" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN")
+    if ! files=$(expand_pattern "$pattern" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN"); then
+      echo "Error: Failed to list files for pattern '$pattern'" >&2
+      exit 1
+    fi
 
     while IFS= read -r file; do
       [[ -z "$file" ]] && continue
@@ -119,7 +127,10 @@ main() {
       dir=$(dirname "$file")
       [[ "$dir" != "." && ! -d "$dir" ]] && mkdir -p "$dir" 2>/dev/null || true
 
-      download_file "$file" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN"
+      if ! download_file "$file" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN"; then
+        echo "Error: Failed to download file '$file'" >&2
+        exit 1
+      fi
     done <<< "$files"
   done <<< "$patterns"
 }
