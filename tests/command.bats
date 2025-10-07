@@ -149,3 +149,22 @@ load "${BATS_PLUGIN_PATH}/load.bash"
   assert_success
   unstub curl
 }
+
+@test "Retries on curl failure" {
+  export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE="file.txt"
+  export BUILDKITE_REPO="https://github.com/owner/repo.git"
+  export BUILDKITE_BRANCH="main"
+  export GITHUB_TOKEN="token"
+
+  stub curl \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : exit 1" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : exit 1" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/file.txt?ref=abc123 -o file.txt : echo 'downloaded'"
+
+  run "$PWD/hooks/checkout"
+
+  assert_success
+  assert_output --partial "Retrying"
+  unstub curl
+}
