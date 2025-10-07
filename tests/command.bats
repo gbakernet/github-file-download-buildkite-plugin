@@ -88,7 +88,7 @@ load "${BATS_PLUGIN_PATH}/load.bash"
 
   stub curl \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.github?ref=abc123 : echo '[{\"path\":\".github/workflow.yml\"},{\"path\":\".github/README.md\"},{\"path\":\".github/config.json\"}]'" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.github?ref=abc123 : echo '[{\"path\":\".github/workflow.yml\",\"type\":\"file\"},{\"path\":\".github/README.md\",\"type\":\"file\"},{\"path\":\".github/config.json\",\"type\":\"file\"}]'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/workflow.yml?ref=abc123 -o .github/workflow.yml : echo 'downloaded'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/README.md?ref=abc123 -o .github/README.md : echo 'downloaded'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/config.json?ref=abc123 -o .github/config.json : echo 'downloaded'"
@@ -125,6 +125,24 @@ load "${BATS_PLUGIN_PATH}/load.bash"
 
   stub curl \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/file.txt?ref=existing123 -o file.txt : echo 'downloaded'"
+
+  run "$PWD/hooks/checkout"
+
+  assert_success
+  unstub curl
+}
+
+@test "Filters out directories when listing files" {
+  export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE=".github/*"
+  export BUILDKITE_REPO="https://github.com/owner/repo.git"
+  export BUILDKITE_BRANCH="main"
+  export GITHUB_TOKEN="token"
+
+  stub curl \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.github?ref=abc123 : echo '[{\"path\":\".github/workflow.yml\",\"type\":\"file\"},{\"path\":\".github/subdir\",\"type\":\"dir\"},{\"path\":\".github/README.md\",\"type\":\"file\"}]'" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/workflow.yml?ref=abc123 -o .github/workflow.yml : echo 'downloaded'" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/README.md?ref=abc123 -o .github/README.md : echo 'downloaded'"
 
   run "$PWD/hooks/checkout"
 

@@ -64,7 +64,7 @@ expand_pattern() {
   local response
   response=$(list_files "$dir" "$repo" "$ref" "$token")
 
-  echo "$response" | jq -r '.[].path'
+  echo "$response" | jq -r '.[] | select(.type == "file") | .path'
 }
 
 main() {
