@@ -1,5 +1,9 @@
 # GitHub File Download Buildkite Plugin
 
+> [!WARNING]
+>
+> This is a proof of concept, DO NOT depend on it yet.
+
 Downloads files from GitHub repositories.
 
 ## Why
