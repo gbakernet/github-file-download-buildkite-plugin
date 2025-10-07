@@ -100,12 +100,14 @@ main() {
   fi
 
   if [[ -z "${BUILDKITE_COMMIT:-}" ]]; then
+    echo "Resolving ref '$BUILDKITE_BRANCH'..."
     local ref
     if ! ref=$(resolve_ref "$BUILDKITE_BRANCH" "$repo" "$GITHUB_TOKEN"); then
       echo "Error: Failed to resolve ref '$BUILDKITE_BRANCH' for repo '$repo'" >&2
       exit 1
     fi
     export BUILDKITE_COMMIT="$ref"
+    echo "Resolved to commit $ref"
   fi
 
   local patterns
@@ -113,6 +115,8 @@ main() {
 
   while IFS= read -r pattern; do
     [[ -z "$pattern" ]] && continue
+
+    echo "Resolving file patterns $pattern..."
 
     local files
     if ! files=$(expand_pattern "$pattern" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN"); then
@@ -123,6 +127,8 @@ main() {
     while IFS= read -r file; do
       [[ -z "$file" ]] && continue
 
+      echo "Downloading $file..."
+
       local dir
       dir=$(dirname "$file")
       [[ "$dir" != "." && ! -d "$dir" ]] && mkdir -p "$dir" 2>/dev/null || true
@@ -131,6 +137,8 @@ main() {
         echo "Error: Failed to download file '$file'" >&2
         exit 1
       fi
+
+      echo "Downloaded $file."
     done <<< "$files"
   done <<< "$patterns"
 }
