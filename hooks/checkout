@@ -66,6 +66,7 @@ download_file() {
     -H "Authorization: Bearer $token" \
     -H "Accept: application/vnd.github.v3.raw" \
     "https://api.github.com/repos/$repo/contents/$file?ref=$ref" \
+    --create-dirs \
     -o "$file"
 }
 
@@ -128,10 +129,6 @@ main() {
       [[ -z "$file" ]] && continue
 
       echo "Downloading $file..."
-
-      local dir
-      dir=$(dirname "$file")
-      [[ "$dir" != "." && ! -d "$dir" ]] && mkdir -p "$dir" 2>/dev/null || true
 
       if ! download_file "$file" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN"; then
         echo "Error: Failed to download file '$file'" >&2

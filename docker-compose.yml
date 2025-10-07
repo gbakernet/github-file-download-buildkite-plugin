@@ -5,6 +5,8 @@ services:
     image: buildkite/plugin-tester:latest
     volumes:
       - .:/plugin:ro
+    tmpfs:
+      - /tmp:exec
 
   lint:
     image: buildkite/plugin-linter:latest

@@ -2,6 +2,16 @@
 
 load "${BATS_PLUGIN_PATH}/load.bash"
 
+setup() {
+  export WORKDIR="$(mktemp -d)"
+  export PLUGIN_DIR="$PWD"
+  cd "$WORKDIR"
+}
+
+teardown() {
+  rm -rf "$WORKDIR"
+}
+
 @test "Downloads single file from GitHub" {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE=".buildkite/pipeline.yml"
   export BUILDKITE_REPO="https://github.com/owner/repo.git"
@@ -10,11 +20,13 @@ load "${BATS_PLUGIN_PATH}/load.bash"
 
   stub curl \
     "-sSfL -H 'Authorization: Bearer token123' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
-    "-sSfL -H 'Authorization: Bearer token123' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.buildkite/pipeline.yml?ref=abc123 -o .buildkite/pipeline.yml : echo 'downloaded'"
+    "-sSfL -H 'Authorization: Bearer token123' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.buildkite/pipeline.yml?ref=abc123 --create-dirs -o .buildkite/pipeline.yml : mkdir -p .buildkite && touch .buildkite/pipeline.yml"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_success
+  assert [ -d ".buildkite" ]
+  assert [ -f ".buildkite/pipeline.yml" ]
   unstub curl
 }
 
@@ -27,12 +39,15 @@ load "${BATS_PLUGIN_PATH}/load.bash"
 
   stub curl \
     "-sSfL -H 'Authorization: Bearer token456' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/feature-branch : echo '{\"sha\":\"def456\"}'" \
-    "-sSfL -H 'Authorization: Bearer token456' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.buildkite/pipeline.yml?ref=def456 -o .buildkite/pipeline.yml : echo 'downloaded'" \
-    "-sSfL -H 'Authorization: Bearer token456' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/README.md?ref=def456 -o README.md : echo 'downloaded'"
+    "-sSfL -H 'Authorization: Bearer token456' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.buildkite/pipeline.yml?ref=def456 --create-dirs -o .buildkite/pipeline.yml : mkdir -p .buildkite && touch .buildkite/pipeline.yml" \
+    "-sSfL -H 'Authorization: Bearer token456' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/README.md?ref=def456 --create-dirs -o README.md : touch README.md"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_success
+  assert [ -d ".buildkite" ]
+  assert [ -f ".buildkite/pipeline.yml" ]
+  assert [ -f "README.md" ]
   unstub curl
 }
 
@@ -42,7 +57,7 @@ load "${BATS_PLUGIN_PATH}/load.bash"
   export BUILDKITE_BRANCH="main"
   unset GITHUB_TOKEN
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_failure
   assert_output --partial "GITHUB_TOKEN is required"
@@ -56,11 +71,12 @@ load "${BATS_PLUGIN_PATH}/load.bash"
 
   stub curl \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/myorg/myrepo/commits/main : echo '{\"sha\":\"abc123\"}'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/myorg/myrepo/contents/file.txt?ref=abc123 -o file.txt : echo 'downloaded'"
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/myorg/myrepo/contents/file.txt?ref=abc123 --create-dirs -o file.txt : touch file.txt"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_success
+  assert [ -f "file.txt" ]
   unstub curl
 }
 
@@ -72,11 +88,12 @@ load "${BATS_PLUGIN_PATH}/load.bash"
 
   stub curl \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/testorg/testrepo/commits/develop : echo '{\"sha\":\"xyz789\"}'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/testorg/testrepo/contents/file.txt?ref=xyz789 -o file.txt : echo 'downloaded'"
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/testorg/testrepo/contents/file.txt?ref=xyz789 --create-dirs -o file.txt : touch file.txt"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_success
+  assert [ -f "file.txt" ]
   unstub curl
 }
 
@@ -89,13 +106,17 @@ load "${BATS_PLUGIN_PATH}/load.bash"
   stub curl \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.github?ref=abc123 : echo '[{\"path\":\".github/workflow.yml\",\"type\":\"file\"},{\"path\":\".github/README.md\",\"type\":\"file\"},{\"path\":\".github/config.json\",\"type\":\"file\"}]'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/workflow.yml?ref=abc123 -o .github/workflow.yml : echo 'downloaded'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/README.md?ref=abc123 -o .github/README.md : echo 'downloaded'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/config.json?ref=abc123 -o .github/config.json : echo 'downloaded'"
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/workflow.yml?ref=abc123 --create-dirs -o .github/workflow.yml : mkdir -p .github && touch .github/workflow.yml" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/README.md?ref=abc123 --create-dirs -o .github/README.md : mkdir -p .github && touch .github/README.md" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/config.json?ref=abc123 --create-dirs -o .github/config.json : mkdir -p .github && touch .github/config.json"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_success
+  assert [ -d ".github" ]
+  assert [ -f ".github/workflow.yml" ]
+  assert [ -f ".github/README.md" ]
+  assert [ -f ".github/config.json" ]
   unstub curl
 }
 
@@ -107,12 +128,13 @@ load "${BATS_PLUGIN_PATH}/load.bash"
 
   stub curl \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"resolved123\"}'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/file.txt?ref=resolved123 -o file.txt : echo 'downloaded'"
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/file.txt?ref=resolved123 --create-dirs -o file.txt : touch file.txt"
 
-  run bash -c "source $PWD/hooks/checkout && echo \$BUILDKITE_COMMIT"
+  run bash -c "source $PLUGIN_DIR/hooks/checkout && echo \$BUILDKITE_COMMIT"
 
   assert_success
   assert_output --partial "resolved123"
+  assert [ -f "file.txt" ]
   unstub curl
 }
 
@@ -124,11 +146,12 @@ load "${BATS_PLUGIN_PATH}/load.bash"
   export GITHUB_TOKEN="token"
 
   stub curl \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/file.txt?ref=existing123 -o file.txt : echo 'downloaded'"
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/file.txt?ref=existing123 --create-dirs -o file.txt : touch file.txt"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_success
+  assert [ -f "file.txt" ]
   unstub curl
 }
 
@@ -141,12 +164,15 @@ load "${BATS_PLUGIN_PATH}/load.bash"
   stub curl \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.github?ref=abc123 : echo '[{\"path\":\".github/workflow.yml\",\"type\":\"file\"},{\"path\":\".github/subdir\",\"type\":\"dir\"},{\"path\":\".github/README.md\",\"type\":\"file\"}]'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/workflow.yml?ref=abc123 -o .github/workflow.yml : echo 'downloaded'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/README.md?ref=abc123 -o .github/README.md : echo 'downloaded'"
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/workflow.yml?ref=abc123 --create-dirs -o .github/workflow.yml : mkdir -p .github && touch .github/workflow.yml" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/README.md?ref=abc123 --create-dirs -o .github/README.md : mkdir -p .github && touch .github/README.md"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_success
+  assert [ -d ".github" ]
+  assert [ -f ".github/workflow.yml" ]
+  assert [ -f ".github/README.md" ]
   unstub curl
 }
 
@@ -160,12 +186,13 @@ load "${BATS_PLUGIN_PATH}/load.bash"
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : exit 1" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : exit 1" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/file.txt?ref=abc123 -o file.txt : echo 'downloaded'"
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/file.txt?ref=abc123 --create-dirs -o file.txt : touch file.txt"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_success
   assert_output --partial "Retrying"
+  assert [ -f "file.txt" ]
   unstub curl
 }
 
@@ -180,7 +207,7 @@ load "${BATS_PLUGIN_PATH}/load.bash"
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/nonexistent : exit 22" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/nonexistent : exit 22"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_failure
   assert_output --partial "Failed to resolve ref 'nonexistent'"
@@ -195,11 +222,11 @@ load "${BATS_PLUGIN_PATH}/load.bash"
 
   stub curl \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 -o missing.txt : exit 22" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 -o missing.txt : exit 22" \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 -o missing.txt : exit 22"
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 --create-dirs -o missing.txt : exit 22" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 --create-dirs -o missing.txt : exit 22" \
+    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 --create-dirs -o missing.txt : exit 22"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_failure
   assert_output --partial "Failed to download file 'missing.txt'"
@@ -218,7 +245,7 @@ load "${BATS_PLUGIN_PATH}/load.bash"
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.nonexistent?ref=abc123 : exit 22" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.nonexistent?ref=abc123 : exit 22"
 
-  run "$PWD/hooks/checkout"
+  run "$PLUGIN_DIR/hooks/checkout"
 
   assert_failure
   assert_output --partial "Failed to list files for pattern '.nonexistent/*'"
