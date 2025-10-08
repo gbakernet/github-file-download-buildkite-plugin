@@ -110,9 +110,9 @@ main() {
     fi
     export BUILDKITE_COMMIT="$ref"
     echo "Resolved to commit $ref"
-  else
-    echo "Ref doesn't need resolving '$BUILDKITE_COMMIT'"
   fi
+
+  echo "BUILDKITE_COMMIT is set to $BUILDKITE_COMMIT"
 
   local patterns
   patterns=$(plugin_read_list FILE)
@@ -123,7 +123,7 @@ main() {
     echo "Resolving file patterns $pattern..."
 
     local files
-    if ! files=$(expand_pattern "$pattern" "$repo" "$ref" "$GITHUB_TOKEN"); then
+    if ! files=$(expand_pattern "$pattern" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN"); then
       echo "Error: Failed to list files for pattern '$pattern'" >&2
       exit 1
     fi
