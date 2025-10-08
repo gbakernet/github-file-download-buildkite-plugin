@@ -100,7 +100,11 @@ main() {
     exit 1
   fi
 
+  echo "BUILDKITE_COMMIT ${BUILDKITE_COMMIT:-}"
+
   local ref="${BUILDKITE_COMMIT:-HEAD}"
+
+  echo "ref ${ref:-}"
 
   if [[ "$ref" == "HEAD" || "$ref" == "head" ]]; then
     echo "Resolving ref '$BUILDKITE_BRANCH'..."
