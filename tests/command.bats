@@ -16,6 +16,7 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE=".buildkite/pipeline.yml"
   export BUILDKITE_REPO="https://github.com/owner/repo.git"
   export BUILDKITE_BRANCH="main"
+  export BUILDKITE_COMMIT="HEAD"
   export GITHUB_TOKEN="token123"
 
   stub curl \
@@ -35,10 +36,10 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE_1="README.md"
   export BUILDKITE_REPO="git@github.com:owner/repo.git"
   export BUILDKITE_BRANCH="feature-branch"
+  export BUILDKITE_COMMIT="def456"
   export GITHUB_TOKEN="token456"
 
   stub curl \
-    "-sSfL -H 'Authorization: Bearer token456' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/feature-branch : echo '{\"sha\":\"def456\"}'" \
     "-sSfL -H 'Authorization: Bearer token456' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.buildkite/pipeline.yml?ref=def456 --create-dirs -o .buildkite/pipeline.yml : mkdir -p .buildkite && touch .buildkite/pipeline.yml" \
     "-sSfL -H 'Authorization: Bearer token456' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/README.md?ref=def456 --create-dirs -o README.md : touch README.md"
 
@@ -67,10 +68,10 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE="file.txt"
   export BUILDKITE_REPO="https://github.com/myorg/myrepo.git"
   export BUILDKITE_BRANCH="main"
+  export BUILDKITE_COMMIT="abc123"
   export GITHUB_TOKEN="token"
 
   stub curl \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/myorg/myrepo/commits/main : echo '{\"sha\":\"abc123\"}'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/myorg/myrepo/contents/file.txt?ref=abc123 --create-dirs -o file.txt : touch file.txt"
 
   run "$PLUGIN_DIR/hooks/checkout"
@@ -84,10 +85,10 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE="file.txt"
   export BUILDKITE_REPO="git@github.com:testorg/testrepo.git"
   export BUILDKITE_BRANCH="develop"
+  export BUILDKITE_COMMIT="xyz789"
   export GITHUB_TOKEN="token"
 
   stub curl \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/testorg/testrepo/commits/develop : echo '{\"sha\":\"xyz789\"}'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/testorg/testrepo/contents/file.txt?ref=xyz789 --create-dirs -o file.txt : touch file.txt"
 
   run "$PLUGIN_DIR/hooks/checkout"
@@ -101,10 +102,10 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE=".github/*"
   export BUILDKITE_REPO="https://github.com/owner/repo.git"
   export BUILDKITE_BRANCH="main"
+  export BUILDKITE_COMMIT="abc123"
   export GITHUB_TOKEN="token"
 
   stub curl \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.github?ref=abc123 : echo '[{\"path\":\".github/workflow.yml\",\"type\":\"file\"},{\"path\":\".github/README.md\",\"type\":\"file\"},{\"path\":\".github/config.json\",\"type\":\"file\"}]'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/workflow.yml?ref=abc123 --create-dirs -o .github/workflow.yml : mkdir -p .github && touch .github/workflow.yml" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/README.md?ref=abc123 --create-dirs -o .github/README.md : mkdir -p .github && touch .github/README.md" \
@@ -124,6 +125,7 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE="file.txt"
   export BUILDKITE_REPO="https://github.com/owner/repo.git"
   export BUILDKITE_BRANCH="main"
+  export BUILDKITE_COMMIT="HEAD"
   export GITHUB_TOKEN="token"
 
   stub curl \
@@ -159,10 +161,10 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE=".github/*"
   export BUILDKITE_REPO="https://github.com/owner/repo.git"
   export BUILDKITE_BRANCH="main"
+  export BUILDKITE_COMMIT="abc123"
   export GITHUB_TOKEN="token"
 
   stub curl \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.github?ref=abc123 : echo '[{\"path\":\".github/workflow.yml\",\"type\":\"file\"},{\"path\":\".github/subdir\",\"type\":\"dir\"},{\"path\":\".github/README.md\",\"type\":\"file\"}]'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/workflow.yml?ref=abc123 --create-dirs -o .github/workflow.yml : mkdir -p .github && touch .github/workflow.yml" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/.github/README.md?ref=abc123 --create-dirs -o .github/README.md : mkdir -p .github && touch .github/README.md"
@@ -180,6 +182,7 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE="file.txt"
   export BUILDKITE_REPO="https://github.com/owner/repo.git"
   export BUILDKITE_BRANCH="main"
+  export BUILDKITE_COMMIT="HEAD"
   export GITHUB_TOKEN="token"
 
   stub curl \
@@ -200,6 +203,7 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE="file.txt"
   export BUILDKITE_REPO="https://github.com/owner/repo.git"
   export BUILDKITE_BRANCH="nonexistent"
+  export BUILDKITE_COMMIT="HEAD"
   export GITHUB_TOKEN="token"
 
   stub curl \
@@ -218,10 +222,10 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE="missing.txt"
   export BUILDKITE_REPO="https://github.com/owner/repo.git"
   export BUILDKITE_BRANCH="main"
+  export BUILDKITE_COMMIT="abc123"
   export GITHUB_TOKEN="token"
 
   stub curl \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 --create-dirs -o missing.txt : exit 22" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 --create-dirs -o missing.txt : exit 22" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3.raw' https://api.github.com/repos/owner/repo/contents/missing.txt?ref=abc123 --create-dirs -o missing.txt : exit 22"
@@ -237,10 +241,10 @@ teardown() {
   export BUILDKITE_PLUGIN_GITHUB_FILE_DOWNLOAD_FILE=".nonexistent/*"
   export BUILDKITE_REPO="https://github.com/owner/repo.git"
   export BUILDKITE_BRANCH="main"
+  export BUILDKITE_COMMIT="abc123"
   export GITHUB_TOKEN="token"
 
   stub curl \
-    "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/commits/main : echo '{\"sha\":\"abc123\"}'" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.nonexistent?ref=abc123 : exit 22" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.nonexistent?ref=abc123 : exit 22" \
     "-sSfL -H 'Authorization: Bearer token' -H 'Accept: application/vnd.github.v3+json' https://api.github.com/repos/owner/repo/contents/.nonexistent?ref=abc123 : exit 22"

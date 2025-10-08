@@ -100,9 +100,10 @@ main() {
     exit 1
   fi
 
-  if [[ -z "${BUILDKITE_COMMIT:-}" ]]; then
+  local ref="${BUILDKITE_COMMIT:-HEAD}"
+
+  if [[ "$ref" == "HEAD" || "$ref" == "head" ]]; then
     echo "Resolving ref '$BUILDKITE_BRANCH'..."
-    local ref
     if ! ref=$(resolve_ref "$BUILDKITE_BRANCH" "$repo" "$GITHUB_TOKEN"); then
       echo "Error: Failed to resolve ref '$BUILDKITE_BRANCH' for repo '$repo'" >&2
       exit 1
@@ -120,7 +121,7 @@ main() {
     echo "Resolving file patterns $pattern..."
 
     local files
-    if ! files=$(expand_pattern "$pattern" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN"); then
+    if ! files=$(expand_pattern "$pattern" "$repo" "$ref" "$GITHUB_TOKEN"); then
       echo "Error: Failed to list files for pattern '$pattern'" >&2
       exit 1
     fi
@@ -130,7 +131,7 @@ main() {
 
       echo "Downloading $file..."
 
-      if ! download_file "$file" "$repo" "$BUILDKITE_COMMIT" "$GITHUB_TOKEN"; then
+      if ! download_file "$file" "$repo" "$ref" "$GITHUB_TOKEN"; then
         echo "Error: Failed to download file '$file'" >&2
         exit 1
       fi
