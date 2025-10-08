@@ -100,20 +100,18 @@ main() {
     exit 1
   fi
 
-  echo "BUILDKITE_COMMIT ${BUILDKITE_COMMIT:-}"
-
   local ref="${BUILDKITE_COMMIT:-HEAD}"
 
-  echo "ref ${ref:-}"
-
   if [[ "$ref" == "HEAD" || "$ref" == "head" ]]; then
-    echo "Resolving ref '$BUILDKITE_BRANCH'..."
+    echo "Resolving branch ref '$BUILDKITE_BRANCH'..."
     if ! ref=$(resolve_ref "$BUILDKITE_BRANCH" "$repo" "$GITHUB_TOKEN"); then
       echo "Error: Failed to resolve ref '$BUILDKITE_BRANCH' for repo '$repo'" >&2
       exit 1
     fi
     export BUILDKITE_COMMIT="$ref"
     echo "Resolved to commit $ref"
+  else
+    echo "Ref doesn't need resolving '$BUILDKITE_COMMIT'"
   fi
 
   local patterns
